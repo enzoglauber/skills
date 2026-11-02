@@ -80,68 +80,80 @@ export function CardContent({ className, ...props }: ComponentProps<'div'>) {
 }
 ```
 
-## Base UI anatomy
+## Radix anatomy
 
-Each module exports a namespace object with the same name (`Dialog`, `Tabs`...).
+The unified `radix-ui` package exports each primitive as a namespace (`Dialog`, `Tabs`...). Alias it as `XPrimitive` so the wrapper can keep the public name.
 
 ```tsx
 // Dialog
-import { Dialog } from '@base-ui/react/dialog'
-<Dialog.Root>
-  <Dialog.Trigger />
-  <Dialog.Portal>
-    <Dialog.Backdrop />
-    <Dialog.Popup>
-      <Dialog.Title />
-      <Dialog.Description />
-      <Dialog.Close />
-    </Dialog.Popup>
-  </Dialog.Portal>
-</Dialog.Root>
+import { Dialog as DialogPrimitive } from 'radix-ui'
+<DialogPrimitive.Root>
+  <DialogPrimitive.Trigger asChild><Button /></DialogPrimitive.Trigger>
+  <DialogPrimitive.Portal>
+    <DialogPrimitive.Overlay />
+    <DialogPrimitive.Content>
+      <DialogPrimitive.Title />
+      <DialogPrimitive.Description />
+      <DialogPrimitive.Close />
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+</DialogPrimitive.Root>
 
 // Tabs
-import { Tabs } from '@base-ui/react/tabs'
-<Tabs.Root>
-  <Tabs.List><Tabs.Tab value="a" /></Tabs.List>
-  <Tabs.Panel value="a" />
-</Tabs.Root>
+import { Tabs as TabsPrimitive } from 'radix-ui'
+<TabsPrimitive.Root defaultValue="a">
+  <TabsPrimitive.List><TabsPrimitive.Trigger value="a" /></TabsPrimitive.List>
+  <TabsPrimitive.Content value="a" />
+</TabsPrimitive.Root>
 
 // Select
-import { Select } from '@base-ui/react/select'
-<Select.Root>
-  <Select.Trigger><Select.Value /></Select.Trigger>
-  <Select.Portal>
-    <Select.Positioner>
-      <Select.Popup><Select.Item value="a" /></Select.Popup>
-    </Select.Positioner>
-  </Select.Portal>
-</Select.Root>
+import { Select as SelectPrimitive } from 'radix-ui'
+<SelectPrimitive.Root>
+  <SelectPrimitive.Trigger><SelectPrimitive.Value placeholder="Selecione" /></SelectPrimitive.Trigger>
+  <SelectPrimitive.Portal>
+    <SelectPrimitive.Content position="popper">
+      <SelectPrimitive.Viewport>
+        <SelectPrimitive.Item value="a"><SelectPrimitive.ItemText /></SelectPrimitive.Item>
+      </SelectPrimitive.Viewport>
+    </SelectPrimitive.Content>
+  </SelectPrimitive.Portal>
+</SelectPrimitive.Root>
 
-// Menu
-import { Menu } from '@base-ui/react/menu'
-<Menu.Root>
-  <Menu.Trigger />
-  <Menu.Portal>
-    <Menu.Positioner>
-      <Menu.Popup><Menu.Item /></Menu.Popup>
-    </Menu.Positioner>
-  </Menu.Portal>
-</Menu.Root>
+// DropdownMenu
+import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
+<DropdownMenuPrimitive.Root>
+  <DropdownMenuPrimitive.Trigger />
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.Content sideOffset={4}>
+      <DropdownMenuPrimitive.Item />
+    </DropdownMenuPrimitive.Content>
+  </DropdownMenuPrimitive.Portal>
+</DropdownMenuPrimitive.Root>
 ```
 
-Styling a Base UI part:
+Wrapping and styling a Radix part:
 
 ```tsx
-<Tabs.Tab
-  value="a"
-  data-slot="tabs-tab"
-  className={twMerge(
-    'text-muted-foreground data-[selected]:text-foreground',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-    className,
-  )}
-  {...props}
-/>
+'use client'
+
+import { Tabs as TabsPrimitive } from 'radix-ui'
+import type { ComponentProps } from 'react'
+import { twMerge } from 'tailwind-merge'
+
+export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
+  return (
+    <TabsPrimitive.Trigger
+      data-slot="tabs-trigger"
+      className={twMerge(
+        'min-h-10 shrink-0 touch-manipulation whitespace-nowrap text-muted-foreground',
+        'data-[state=active]:text-foreground data-disabled:opacity-50',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 ```
 
 ## Tailwind v4 `@theme` with the tokens
