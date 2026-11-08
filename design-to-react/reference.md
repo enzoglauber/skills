@@ -1,5 +1,7 @@
 # Reference examples
 
+Files under `components/ui` come from `npx shadcn@latest add` and keep `cn` and `cva`. The Button example below is the shape of a composition that has no registry component. Do not use it to replace `components/ui/button.tsx`.
+
 ## Button (variants)
 
 ```tsx
@@ -187,3 +189,105 @@ export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsP
 ```
 
 Every `--color-<name>` becomes `bg-<name>`, `text-<name>`, `border-<name>`, `ring-<name>`. For dark mode, override the variables under a `.dark` selector or `@media (prefers-color-scheme: dark)`.
+
+## Specialized form
+
+The screen only places the form. `useForm`, the field messages, and submit stay in the form file. The hook owns the request and returns a failure code.
+
+```tsx
+export function LoginScreen({ copy }: { copy: LoginCopy }) {
+  return (
+    <MotionConfig reducedMotion="user">
+      <LoginForm copy={copy} />
+    </MotionConfig>
+  )
+}
+```
+
+```tsx
+export function useLogin() {
+  const [pending, setPending] = useState(false)
+
+  async function login(values: SignInDto): Promise<'invalid' | 'unavailable' | null> {
+    setPending(true)
+    try {
+      const result = await authControllerLogin({ body: values })
+      if (!result.data) return result.response?.status === 401 ? 'invalid' : 'unavailable'
+      setAccessToken(result.data.access_token)
+      return null
+    } catch {
+      return 'unavailable'
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return { login, pending }
+}
+```
+
+```tsx
+export function LoginForm({ copy }: { copy: LoginCopy }) {
+  const emailErrorId = useId()
+  const passwordErrorId = useId()
+  const formErrorId = useId()
+  const { login, pending } = useLogin()
+  const {
+    register,
+    handleSubmit,
+    setError,
+    clearErrors,
+    formState: { errors },
+  } = useForm<SignInDto>({ defaultValues: { email: '', password: '' } })
+
+  async function onSubmit(values: SignInDto) {
+    clearErrors('root')
+    const failure = await login(values)
+    if (!failure) return
+    setError('root', { message: failure === 'invalid' ? copy.failed : copy.unavailable })
+  }
+
+  return (
+    <motion.form noValidate onSubmit={handleSubmit(onSubmit)} variants={riseGroup} className="flex flex-col gap-4">
+      <motion.div variants={rise} className="flex flex-col gap-2">
+        <Label htmlFor="email">{copy.email}</Label>
+        <Input
+          id="email"
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? emailErrorId : undefined}
+          {...register('email', { required: copy.invalid })}
+        />
+        {errors.email?.message ? (
+          <motion.p id={emailErrorId} role="alert" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            {errors.email.message}
+          </motion.p>
+        ) : null}
+      </motion.div>
+
+      <motion.div variants={rise} className="flex flex-col gap-2">
+        <Label htmlFor="password">{copy.password}</Label>
+        <PasswordInput
+          id="password"
+          aria-invalid={errors.password ? true : undefined}
+          aria-describedby={errors.password ? passwordErrorId : undefined}
+          {...register('password', { required: copy.invalid })}
+        />
+        {errors.password?.message ? (
+          <motion.p id={passwordErrorId} role="alert" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            {errors.password.message}
+          </motion.p>
+        ) : null}
+      </motion.div>
+
+      <Button type="submit" loading={pending}>{copy.submit}</Button>
+      {errors.root?.message ? (
+        <motion.p id={formErrorId} role="alert" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          {errors.root.message}
+        </motion.p>
+      ) : null}
+    </motion.form>
+  )
+}
+```
+
+The password message is inside the password group, under the control. The email message stays in the email group. `errors.root` is the only message that follows the submit control.

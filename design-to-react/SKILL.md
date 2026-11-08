@@ -1,6 +1,6 @@
 ---
 name: design-to-react
-description: Converts UI designs (screenshots, Figma frames, Pencil .pen frames) into production-ready React 19 components using TypeScript strict, Tailwind CSS v4, shadcn/ui on Radix, tailwind-variants and tailwind-merge. Use when the user attaches a design/screenshot, asks to implement a layout or component from Figma/.pen, or to create/refactor React UI components following this stack.
+description: Converts UI designs (screenshots, Figma frames, Pencil .pen frames) into production-ready React 19 components using TypeScript strict, Tailwind CSS v4, and shadcn/ui on Radix. Verifies Tailwind and shadcn are installed before writing UI, then adds registry components with the shadcn CLI. Use when the user attaches a design/screenshot, asks to implement a layout or component from Figma/.pen, or to create/refactor React UI components following this stack.
 ---
 
 # Design to React
@@ -10,20 +10,61 @@ Convert the attached design into React components that follow the rules below. A
 ## Workflow
 
 1. **Analyze the design**: list components, variants (`variant`, `size`...), interactive states (hover, focus, disabled, selected, open) and the colors/spacing/radii used.
-2. **Check the project**: read `package.json` and the global CSS (`@theme` block). Reuse existing components, tokens and the icon library already installed. If a dependency of the stack is missing, tell the user which to install.
-3. **Map colors to theme tokens**: never hardcode hex/rgb or palette classes like `bg-zinc-900`. If a needed token is missing, propose adding it to `@theme`.
-4. **Generate code**: one component (or compound family) per file.
+2. **Run the preflight below**. Do not write or edit UI until Tailwind and shadcn are installed and the registry components the screen needs are on disk.
+3. **Map colors to theme tokens**: never hardcode hex/rgb or palette classes like `bg-zinc-900`. If a needed token is missing, add it to `@theme`.
+4. **Compose the screen** from the shadcn files in `components/ui`. One product component (or compound family) per file. Do not hand-roll a second copy of a registry primitive.
 5. **Run the checklist** at the end and fix anything that fails.
+
+## Preflight
+
+Run this before any component work. If something is missing, install it and continue. Do not stop to ask the user to install it.
+
+### Tailwind
+
+`package.json` must include `tailwindcss` v4 and the integration this repo already uses (`@tailwindcss/postcss` or `@tailwindcss/turbopack`). The global CSS must start with `@import "tailwindcss"`. If either is missing, install the packages and add the import before continuing.
+
+### shadcn
+
+All of these must exist:
+
+- `components.json` with `"base":` pointing at Radix (`radix`) unless the repo already chose another base
+- `src/lib/utils.ts` exporting `cn`
+- dependencies: `radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`
+
+If `components.json` or `cn` is missing, run:
+
+```bash
+npx shadcn@latest init -d --base radix
+```
+
+`init` rewrites CSS variables. After it finishes, put the project's existing palette back. Do not replace a designed theme with the CLI palette. Alias any shadcn token the project does not have (`accent`, `accent-foreground`, `input`, `card`, `card-foreground`, `popover`, `popover-foreground`, `radius`) to an existing token.
+
+### Registry components
+
+For every interactive primitive the design needs, the file `src/components/ui/<name>.tsx` must be the one the shadcn registry generated (`cn` from `@/lib/utils`, `cva` where the registry uses it, `data-slot`, Radix anatomy). A hand-written lookalike does not count. If the file is missing or was not added by the CLI, run:
+
+```bash
+npx shadcn@latest add <name> --yes --overwrite
+```
+
+Typical set: `button`, `input`, `label`, `select`, `checkbox`, `radio-group`, `switch`, `slider`, `tabs`, `toggle`, `toggle-group`, `dialog`, `alert-dialog`, `sheet`, `dropdown-menu`, `tooltip`, `popover`, `calendar`, `table`, `pagination`, `breadcrumb`, `badge`, `card`, `separator`, `skeleton`, `sonner`.
+
+Only after those files exist, change classes and variants so they match the design (color, radius, height). Keep `cn`, `cva`, `data-slot`, the Radix parts, and the export names the CLI generated.
+
+`tailwind-variants` is for a composition that has no registry component. It does not replace a file under `components/ui`.
 
 ## Stack
 
 - React 19 (no `forwardRef`; `ref` is a regular prop)
 - TypeScript strict
 - Tailwind CSS v4 with `@theme` and CSS variables
-- shadcn/ui on Radix (`radix-ui` unified package) for headless/interactive components
-- `tailwind-variants` (`tv`) for variants
-- `tailwind-merge` (`twMerge`) for class merging
-- Lucide React or Phosphor Icons
+- shadcn/ui on Radix (`radix-ui` unified package). Interactive primitives come from `npx shadcn@latest add` and stay in that shape (`cn`, `cva`, `data-slot`)
+- `class-variance-authority` and `clsx`, as the registry components require
+- `tailwind-merge`, used by `cn` and by compositions outside `components/ui`
+- `tailwind-variants` only for compositions that have no shadcn component
+- Lucide React
+- Motion (`motion`, imported from `motion/react`) for animation
+- `react-hook-form` for forms
 
 ## Naming
 
@@ -33,8 +74,10 @@ Convert the attached design into React components that follow the rules below. A
 
 ## Component rules
 
+Registry files under `components/ui` keep the `cva` / `cn` the CLI wrote. The `tv()` pattern below is only for a composition that has no shadcn component.
+
 ```tsx
-// Variants with tv(), exported as `<name>Variants`
+// Variants with tv(), exported as `<name>Variants`, only outside components/ui
 export const buttonVariants = tv({ base: [...], variants: {...}, defaultVariants: {...} })
 
 // Always merge the consumer className last
@@ -62,7 +105,85 @@ className="data-[disabled]:opacity-50 data-[selected]:bg-primary"
 ```
 
 - Native `<button>` defaults to `type="button"`.
-- Compound components: export each part (`Card`, `CardHeader`, `CardTitle`, `CardContent`) from the same file.
+- One component per file. Never declare a component inside another component, and never add a second component to the same file. Compound parts of a single component (`Card`, `CardHeader`, `CardTitle`, `CardContent`) are the exception and stay together.
+
+## Motion
+
+Entrances, reveals, and transitions use Motion. Import from `motion/react`. Do not add CSS `@keyframes` for component motion.
+
+```tsx
+import { MotionConfig, motion } from 'motion/react'
+
+<MotionConfig reducedMotion="user">
+  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} />
+</MotionConfig>
+```
+
+Wrap the animated tree in `MotionConfig` with `reducedMotion="user"`.
+
+## Forms
+
+A screen does not own the form. The screen receives copy and renders one specialized form component (`LoginForm`). That file is the only place with `useForm`, field errors, and submit. The request lives in a hook (`useLogin`) that returns `{ login, pending }` and a failure code, so the component never parses a response, a status, or a token. The screen's TypeScript stays the layout.
+
+Forms use `react-hook-form`, typed with the DTO the API already exports. The submit handler receives those values. Do not read `FormData` and force a type with `String()`, `Number()`, or `as`. Set `noValidate` so the browser does not replace the copy.
+
+```tsx
+const { login, pending } = useLogin()
+const {
+  register,
+  handleSubmit,
+  setError,
+  clearErrors,
+  formState: { errors },
+} = useForm<SignInDto>({ defaultValues: { email: '', password: '' } })
+
+async function onSubmit(values: SignInDto) {
+  clearErrors('root')
+  const failure = await login(values)
+  if (!failure) {
+    router.push('/')
+    return
+  }
+  setError('root', { message: failure === 'invalid' ? copy.failed : copy.unavailable })
+}
+
+<motion.form noValidate onSubmit={handleSubmit(onSubmit)} variants={riseGroup}>
+```
+
+Copy is a prop, typed from the message module: `type LoginCopy = (typeof auth)['Login']`. `{...register(...)}` is last on the control.
+
+The form is a `motion.form` with the group's variants. Each field is its own `motion.div` with the child variant, so the fields rise in order. The screen wraps that tree in `MotionConfig reducedMotion="user"`. A message that mounts later animates on its own (`initial` / `animate`), because it is not in the stagger.
+
+A field's validation message always sits directly under that field, inside the same group. Email never renders the password message, and one shared `message` is never parked after the last control.
+
+```tsx
+const emailErrorId = useId()
+
+<motion.div variants={rise} className="flex flex-col gap-2">
+  <Label htmlFor="email">{copy.email}</Label>
+  <Input
+    id="email"
+    aria-invalid={errors.email ? true : undefined}
+    aria-describedby={errors.email ? emailErrorId : undefined}
+    {...register('email', { required: copy.invalid })}
+  />
+  {errors.email?.message ? (
+    <motion.p
+      id={emailErrorId}
+      role="alert"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-caption text-danger-foreground"
+    >
+      {errors.email.message}
+    </motion.p>
+  ) : null}
+</motion.div>
+```
+
+`setError('email', { message })` when the API rejects that field. `errors.root` is the form failure (credentials, network). Render it once, under the submit control. Do not drop it into a field, and do not mark every field `aria-invalid` for it.
+
+Full shape in [reference.md](reference.md#specialized-form).
 
 ## TypeScript
 
@@ -96,12 +217,13 @@ ring-ring                           -> focus ring
 
 Prefer the project's existing token names when they differ.
 
-## Radix (via shadcn/ui)
+## shadcn components
 
-Use Radix primitives for Dialog, Sheet, Tabs, Select, Accordion, DropdownMenu, Popover, Tooltip, etc. Import from the unified package: `import { Dialog as DialogPrimitive } from "radix-ui"`.
+Interactive UI is the registry component, not a hand-written Radix wrapper.
 
-- Add components with `npx shadcn@latest add <component>`, then adapt the generated file: swap `cn()`/`cva` for `twMerge`/`tv()`, use named exports and `import type`, apply the project tokens and translate labels (e.g. `aria-label="Fechar"`). Never let `@/lib/utils` or `class-variance-authority` back in.
-- Wrap each part in its own exported function with `data-slot`, extending `ComponentProps<typeof XPrimitive.Part>`.
+- Import it from `@/components/ui/<name>`: `Button`, `Input`, `Select`, `Dialog`, `Tabs`, `DropdownMenu`, and the rest of the preflight set.
+- The file keeps `import { cn } from '@/lib/utils'` and `cva` when the CLI emitted them. Do not rewrite it to `tv()` / `twMerge()`, and do not delete `@/lib/utils`.
+- Adjust only what the design changes: token classes (`bg-primary`, `rounded-full`, heights) and extra variants the screen needs. Translate visible labels and `aria-label` (for example `aria-label="Fechar"`).
 - Use `asChild` (Radix `Slot`) to render a primitive as your own component (`<DialogTrigger asChild><Button /></DialogTrigger>`).
 - Style states with the attributes Radix exposes: `data-[state=open]`, `data-[state=closed]`, `data-[state=active]`, `data-[state=checked]`, `data-disabled`, `data-highlighted`, `data-[orientation=vertical]`, `data-[side=top]`, `aria-expanded`.
 - Positioned content uses Radix CSS variables: `max-h-(--radix-select-content-available-height)`, `origin-(--radix-popover-content-transform-origin)`.
@@ -147,10 +269,12 @@ Add `'use client'` at the top of components that use state, effects, event handl
 
 ## Checklist
 
+- [ ] Preflight passed: Tailwind v4 imported, `components.json` and `cn` present, registry files installed with `shadcn add` before the screen was written
+- [ ] Interactive primitives imported from `@/components/ui`, still using `cn` / `cva` / `data-slot` as the CLI generated them
 - [ ] File in kebab-case
 - [ ] Named export
-- [ ] `ComponentProps<'element'>` + `VariantProps`
-- [ ] Variants with `tv()`, classes with `twMerge()`
+- [ ] `ComponentProps<'element'>` + `VariantProps` on compositions outside `components/ui`
+- [ ] `tv()` / `twMerge()` only where no shadcn component exists
 - [ ] `data-slot` on every part
 - [ ] States via `data-[state]:`
 - [ ] Theme colors only (nothing hardcoded)
@@ -163,6 +287,11 @@ Add `'use client'` at the top of components that use state, effects, event handl
 - [ ] No horizontal page scroll from 320px up (`scrollWidth === clientWidth`); Dialog centered at 320px
 - [ ] Touch targets ≥ 24px; no essential feedback that depends only on `hover:`
 - [ ] DOM order matches the mobile reading order
+- [ ] No component is declared inside another component or shares its file (compound parts excepted)
+- [ ] Animation comes from Motion, inside `MotionConfig reducedMotion="user"`
+- [ ] The screen renders a specialized form; `useForm` and field errors stay in that file, and the request stays in a hook
+- [ ] Forms use react-hook-form typed with the API DTO; submitted values are used as typed, with no `String()`, `Number()`, or `as` cast
+- [ ] Each field error renders under that field, with `aria-invalid` and `aria-describedby` pointing at that message; `errors.root` sits under the submit control
 
 ## Additional resources
 
