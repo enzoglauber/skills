@@ -1,6 +1,6 @@
 ---
 name: design-to-react
-description: Converts UI designs (screenshots, Figma frames, Pencil .pen frames) into production-ready React 19 components using TypeScript strict, Tailwind CSS v4, and shadcn/ui on Radix. Verifies Tailwind and shadcn are installed before writing UI, then adds registry components with the shadcn CLI. Use when the user attaches a design/screenshot, asks to implement a layout or component from Figma/.pen, or to create/refactor React UI components following this stack.
+description: Converts UI designs (screenshots, Figma frames, Pencil .pen frames) into production-ready React 19 components using TypeScript strict, Tailwind CSS v4, and shadcn/ui on Base UI. Verifies Tailwind and shadcn are installed before writing UI, then adds registry components with the shadcn CLI. Use when the user attaches a design/screenshot, asks to implement a layout or component from Figma/.pen, or to create/refactor React UI components following this stack.
 ---
 
 # Design to React
@@ -27,21 +27,21 @@ Run this before any component work. If something is missing, install it and cont
 
 All of these must exist:
 
-- `components.json` with `"base":` pointing at Radix (`radix`) unless the repo already chose another base
+- `components.json` with `"style": "base-nova"` unless the repo already chose another style
 - `src/lib/utils.ts` exporting `cn`
-- dependencies: `radix-ui`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react`
+- dependencies: `@base-ui/react`, `class-variance-authority`, `tailwind-merge`, `lucide-react`, plus this repo’s `cn` (do not add unused `clsx` if `cn` already merges classes)
 
 If `components.json` or `cn` is missing, run:
 
 ```bash
-npx shadcn@latest init -d --base radix
+npx shadcn@latest init -d --base base
 ```
 
 `init` rewrites CSS variables. After it finishes, put the project's existing palette back. Do not replace a designed theme with the CLI palette. Alias any shadcn token the project does not have (`accent`, `accent-foreground`, `input`, `card`, `card-foreground`, `popover`, `popover-foreground`, `radius`) to an existing token.
 
 ### Registry components
 
-For every interactive primitive the design needs, the file `src/components/ui/<name>.tsx` must be the one the shadcn registry generated (`cn` from `@/lib/utils`, `cva` where the registry uses it, `data-slot`, Radix anatomy). A hand-written lookalike does not count. If the file is missing or was not added by the CLI, run:
+For every interactive primitive the design needs, the file `src/components/ui/<name>.tsx` must be the one the shadcn registry generated (`cn` from `@/lib/utils`, `cva` where the registry uses it, `data-slot`, Base UI anatomy). A hand-written lookalike does not count. If the file is missing or was not added by the CLI, run:
 
 ```bash
 npx shadcn@latest add <name> --yes --overwrite
@@ -49,7 +49,7 @@ npx shadcn@latest add <name> --yes --overwrite
 
 Typical set: `button`, `input`, `label`, `select`, `checkbox`, `radio-group`, `switch`, `slider`, `tabs`, `toggle`, `toggle-group`, `dialog`, `alert-dialog`, `sheet`, `dropdown-menu`, `tooltip`, `popover`, `calendar`, `table`, `pagination`, `breadcrumb`, `badge`, `card`, `separator`, `skeleton`, `sonner`.
 
-Only after those files exist, change classes and variants so they match the design (color, radius, height). Keep `cn`, `cva`, `data-slot`, the Radix parts, and the export names the CLI generated.
+Only after those files exist, change classes and variants so they match the design (color, radius, height). Keep `cn`, `cva`, `data-slot`, the Base UI parts, and the export names the CLI generated.
 
 `tailwind-variants` is for a composition that has no registry component. It does not replace a file under `components/ui`.
 
@@ -58,13 +58,24 @@ Only after those files exist, change classes and variants so they match the desi
 - React 19 (no `forwardRef`; `ref` is a regular prop)
 - TypeScript strict
 - Tailwind CSS v4 with `@theme` and CSS variables
-- shadcn/ui on Radix (`radix-ui` unified package). Interactive primitives come from `npx shadcn@latest add` and stay in that shape (`cn`, `cva`, `data-slot`)
+- shadcn/ui on Base UI (`@base-ui/react`, style `base-nova`). Interactive primitives come from `npx shadcn@latest add` and stay in that shape (`cn`, `cva`, `data-slot`)
 - `class-variance-authority` and `clsx`, as the registry components require
 - `tailwind-merge`, used by `cn` and by compositions outside `components/ui`
 - `tailwind-variants` only for compositions that have no shadcn component
-- Lucide React
+- Lucide React for every UI icon (`Menu`, `Search`, `Send`, `X`). Size with `className="size-4"` (or `size-3.5` / `size-5` to match the design). Do not paste inline `<svg>` for those icons.
+- If Lucide has no mark (brand logos such as Instagram or X), use `@phosphor-icons/react` (`InstagramLogoIcon`, `XLogoIcon`). Do not hand-draw the path or wrap it in `createLucideIcon`. Flags, photos, and generated illustrations stay as they are.
 - Motion (`motion`, imported from `motion/react`) for animation
 - `react-hook-form` for forms
+
+```tsx
+import { InstagramLogoIcon, XLogoIcon } from '@phosphor-icons/react'
+import { Menu, Send } from 'lucide-react'
+
+<Menu className="size-5" />
+<Send className="size-4" />
+<XLogoIcon className="size-4" />
+<InstagramLogoIcon className="size-4" />
+```
 
 ## Naming
 
@@ -219,14 +230,14 @@ Prefer the project's existing token names when they differ.
 
 ## shadcn components
 
-Interactive UI is the registry component, not a hand-written Radix wrapper.
+Interactive UI is the registry component, not a hand-written Base UI wrapper.
 
 - Import it from `@/components/ui/<name>`: `Button`, `Input`, `Select`, `Dialog`, `Tabs`, `DropdownMenu`, and the rest of the preflight set.
 - The file keeps `import { cn } from '@/lib/utils'` and `cva` when the CLI emitted them. Do not rewrite it to `tv()` / `twMerge()`, and do not delete `@/lib/utils`.
 - Adjust only what the design changes: token classes (`bg-primary`, `rounded-full`, heights) and extra variants the screen needs. Translate visible labels and `aria-label` (for example `aria-label="Fechar"`).
-- Use `asChild` (Radix `Slot`) to render a primitive as your own component (`<DialogTrigger asChild><Button /></DialogTrigger>`).
-- Style states with the attributes Radix exposes: `data-[state=open]`, `data-[state=closed]`, `data-[state=active]`, `data-[state=checked]`, `data-disabled`, `data-highlighted`, `data-[orientation=vertical]`, `data-[side=top]`, `aria-expanded`.
-- Positioned content uses Radix CSS variables: `max-h-(--radix-select-content-available-height)`, `origin-(--radix-popover-content-transform-origin)`.
+- Compose with the `render` prop (`<DropdownMenuTrigger render={<Button variant="ghost" />}>Open</DropdownMenuTrigger>`). Do not use `asChild`.
+- Style states with the attributes Base UI exposes: `data-open`, `data-closed`, `data-active`, `data-pressed`, `data-checked`, `data-disabled`, `data-highlighted`, `data-[side=top]`, `aria-expanded`.
+- Positioned content uses Base UI CSS variables: `max-h-(--available-height)`, `w-(--anchor-width)`, `origin-(--transform-origin)`.
 
 Anatomy examples in [reference.md](reference.md).
 
@@ -265,7 +276,7 @@ A single element wider than the viewport makes the whole page scroll sideways on
 
 ## Next.js
 
-Add `'use client'` at the top of components that use state, effects, event handlers or Radix interactive parts.
+Add `'use client'` at the top of components that use state, effects, event handlers or Base UI interactive parts.
 
 ## Checklist
 
@@ -276,10 +287,11 @@ Add `'use client'` at the top of components that use state, effects, event handl
 - [ ] `ComponentProps<'element'>` + `VariantProps` on compositions outside `components/ui`
 - [ ] `tv()` / `twMerge()` only where no shadcn component exists
 - [ ] `data-slot` on every part
-- [ ] States via `data-[state]:`
+- [ ] States via Base UI data attributes (`data-open`, `data-active`, `data-pressed`)
 - [ ] Theme colors only (nothing hardcoded)
 - [ ] `focus-visible` on interactive elements
 - [ ] `aria-label` on icon-only buttons
+- [ ] UI icons come from `lucide-react`; brand marks Lucide dropped come from `@phosphor-icons/react`; no inline `<svg>` for those icons
 - [ ] `{...props}` last
 - [ ] Every grid declares `grid-cols-1` for mobile; custom tracks use `minmax(0,1fr)`
 - [ ] Wide rows (tabs, chips) scroll inside themselves; their parents have `min-w-0`
@@ -295,4 +307,4 @@ Add `'use client'` at the top of components that use state, effects, event handl
 
 ## Additional resources
 
-- Full examples (Button, Card, Radix, `@theme`): [reference.md](reference.md)
+- Full examples (Button, Card, Base UI, `@theme`): [reference.md](reference.md)

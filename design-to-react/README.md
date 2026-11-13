@@ -11,7 +11,7 @@ Baseado no artigo [Design para React com IA: o prompt exato para acelerar seu fr
 | Arquivo        | Para quem           | Conteúdo                                                                |
 | -------------- | ------------------- | ----------------------------------------------------------------------- |
 | `SKILL.md`     | Agente              | Workflow, regras, tokens e checklist (em inglês para economizar tokens) |
-| `reference.md` | Agente, sob demanda | Exemplos completos: Button, Card, Radix e `@theme`                      |
+| `reference.md` | Agente, sob demanda | Exemplos completos: Button, Card, Base UI e `@theme`                    |
 | `README.md`    | Humanos             | Esta documentação                                                       |
 
 ## Como usar
@@ -24,14 +24,14 @@ Baseado no artigo [Design para React com IA: o prompt exato para acelerar seu fr
 - React 19 (sem `forwardRef`)
 - TypeScript strict
 - Tailwind CSS v4 com `@theme` e CSS variables
-- shadcn/ui sobre Radix (pacote unificado `radix-ui`) para componentes headless
+- shadcn/ui sobre Base UI (`@base-ui/react`, estilo `base-nova`) para componentes headless
 - `tailwind-variants` para variantes e `tailwind-merge` para merge de classes
 - Lucide React ou Phosphor Icons
 
 Dependências:
 
 ```bash
-npm install tailwind-variants tailwind-merge radix-ui lucide-react
+npm install tailwind-variants tailwind-merge @base-ui/react lucide-react
 ```
 
 Componentes interativos entram pela CLI (`npx shadcn@latest add <componente>`) e são adaptados em seguida: `cn()`/`cva` viram `twMerge`/`tv()`, exports nomeados e tokens do projeto.
@@ -59,7 +59,7 @@ Componentes interativos entram pela CLI (`npx shadcn@latest add <componente>`) e
 
 ## Diferenças em relação ao artigo
 
-O artigo usa Base UI; esta skill usa shadcn/ui sobre Radix. Os imports no `reference.md` vêm do pacote unificado (`import { Dialog as DialogPrimitive } from 'radix-ui'`), e cada parte é embrulhada numa função própria com `data-slot`, estilizada pelos atributos do Radix (`data-[state=open]`, `data-disabled`...).
+A skill usa shadcn/ui sobre Base UI, o mesmo primitivo do artigo. Os imports no `reference.md` vêm de `@base-ui/react/<primitivo>`, cada parte é embrulhada numa função própria com `data-slot`, e o estado usa os atributos do Base UI (`data-open`, `data-active`, `data-pressed`). Composição de outro elemento usa a prop `render`.
 
 A seção **Responsive & touch** do `SKILL.md` também não existe no artigo: ela veio de um bug real em que um grid sem `grid-cols-1` alargava a página no celular, gerava scroll horizontal e tirava o Dialog do centro.
 

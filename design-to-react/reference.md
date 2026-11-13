@@ -82,73 +82,62 @@ export function CardContent({ className, ...props }: ComponentProps<'div'>) {
 }
 ```
 
-## Radix anatomy
+## Base UI anatomy
 
-The unified `radix-ui` package exports each primitive as a namespace (`Dialog`, `Tabs`...). Alias it as `XPrimitive` so the wrapper can keep the public name.
+`@base-ui/react` exports each primitive from its own path. Alias it as `XPrimitive` so the wrapper can keep the public name. Compose another element with `render`, not `asChild`.
 
 ```tsx
 // Dialog
-import { Dialog as DialogPrimitive } from 'radix-ui'
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 <DialogPrimitive.Root>
-  <DialogPrimitive.Trigger asChild><Button /></DialogPrimitive.Trigger>
+  <DialogPrimitive.Trigger render={<Button />}>Open</DialogPrimitive.Trigger>
   <DialogPrimitive.Portal>
-    <DialogPrimitive.Overlay />
-    <DialogPrimitive.Content>
+    <DialogPrimitive.Backdrop />
+    <DialogPrimitive.Popup>
       <DialogPrimitive.Title />
       <DialogPrimitive.Description />
       <DialogPrimitive.Close />
-    </DialogPrimitive.Content>
+    </DialogPrimitive.Popup>
   </DialogPrimitive.Portal>
 </DialogPrimitive.Root>
 
 // Tabs
-import { Tabs as TabsPrimitive } from 'radix-ui'
+import { Tabs as TabsPrimitive } from '@base-ui/react/tabs'
 <TabsPrimitive.Root defaultValue="a">
-  <TabsPrimitive.List><TabsPrimitive.Trigger value="a" /></TabsPrimitive.List>
-  <TabsPrimitive.Content value="a" />
+  <TabsPrimitive.List><TabsPrimitive.Tab value="a" /></TabsPrimitive.List>
+  <TabsPrimitive.Panel value="a" />
 </TabsPrimitive.Root>
 
-// Select
-import { Select as SelectPrimitive } from 'radix-ui'
-<SelectPrimitive.Root>
-  <SelectPrimitive.Trigger><SelectPrimitive.Value placeholder="Selecione" /></SelectPrimitive.Trigger>
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content position="popper">
-      <SelectPrimitive.Viewport>
-        <SelectPrimitive.Item value="a"><SelectPrimitive.ItemText /></SelectPrimitive.Item>
-      </SelectPrimitive.Viewport>
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-</SelectPrimitive.Root>
-
-// DropdownMenu
-import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
-<DropdownMenuPrimitive.Root>
-  <DropdownMenuPrimitive.Trigger />
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content sideOffset={4}>
-      <DropdownMenuPrimitive.Item />
-    </DropdownMenuPrimitive.Content>
-  </DropdownMenuPrimitive.Portal>
-</DropdownMenuPrimitive.Root>
+// Menu
+import { Menu as MenuPrimitive } from '@base-ui/react/menu'
+<MenuPrimitive.Root>
+  <MenuPrimitive.Trigger render={<Button variant="ghost" />}>Open</MenuPrimitive.Trigger>
+  <MenuPrimitive.Portal>
+    <MenuPrimitive.Positioner>
+      <MenuPrimitive.Popup>
+        <MenuPrimitive.Item />
+      </MenuPrimitive.Popup>
+    </MenuPrimitive.Positioner>
+  </MenuPrimitive.Portal>
+</MenuPrimitive.Root>
 ```
 
-Wrapping and styling a Radix part:
+Wrapping and styling a Base UI part:
 
 ```tsx
 'use client'
 
-import { Tabs as TabsPrimitive } from 'radix-ui'
+import { Tabs as TabsPrimitive } from '@base-ui/react/tabs'
 import type { ComponentProps } from 'react'
 import { twMerge } from 'tailwind-merge'
 
-export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
+export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Tab>) {
   return (
-    <TabsPrimitive.Trigger
+    <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={twMerge(
         'min-h-10 shrink-0 touch-manipulation whitespace-nowrap text-muted-foreground',
-        'data-[state=active]:text-foreground data-disabled:opacity-50',
+        'data-active:text-foreground data-disabled:opacity-50',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         className,
       )}
@@ -291,3 +280,15 @@ export function LoginForm({ copy }: { copy: LoginCopy }) {
 ```
 
 The password message is inside the password group, under the control. The email message stays in the email group. `errors.root` is the only message that follows the submit control.
+
+## Icons (Lucide)
+
+```tsx
+import { InstagramLogoIcon, XLogoIcon } from '@phosphor-icons/react'
+import { Menu, Send } from 'lucide-react'
+
+<Menu className="size-5" />
+<Send className="size-4" />
+<XLogoIcon className="size-4" />
+<InstagramLogoIcon className="size-4" />
+```
